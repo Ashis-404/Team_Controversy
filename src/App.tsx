@@ -16,6 +16,12 @@ function App() {
   const [assignedAmbulance, setAssignedAmbulance] = useState<Ambulance | null>(null);
   const [isDarkTheme, setIsDarkTheme] = useState(false);
 
+  // Notification state for header
+  const [ambulanceUpdate, setAmbulanceUpdate] = useState<string>('');
+
+  // Use an untyped handle to bypass TS `never` issues from a missing Database schema
+  const sb = supabase as any;
+
   const handleModeSelect = (mode: 'standard' | 'sos') => {
     if (mode === 'standard') {
       setCurrentView('standard');
@@ -26,7 +32,7 @@ function App() {
 
   const createBooking = async (formData: BookingFormData, bookingType: 'standard' | 'sos') => {
     try {
-      const { data: availableAmbulances } = await supabase
+      const { data: availableAmbulances } = await sb
         .from('ambulances')
         .select('*')
         .eq('is_available', true)
@@ -34,10 +40,10 @@ function App() {
         .limit(1)
         .maybeSingle();
 
-      let selectedAmbulance = availableAmbulances;
+      let selectedAmbulance: any = availableAmbulances;
 
       if (!selectedAmbulance) {
-        const { data: anyAmbulance } = await supabase
+        const { data: anyAmbulance } = await sb
           .from('ambulances')
           .select('*')
           .limit(1)
@@ -45,7 +51,7 @@ function App() {
         selectedAmbulance = anyAmbulance;
       }
 
-      const { data: booking, error } = await supabase
+      const { data: booking, error } = await sb
         .from('bookings')
         .insert({
           booking_type: bookingType,
@@ -63,8 +69,17 @@ function App() {
 
       if (error) throw error;
 
-      setCurrentBooking(booking);
-      setAssignedAmbulance(selectedAmbulance);
+      const typedBooking = booking as unknown as Booking;
+      setCurrentBooking(typedBooking);
+      setAssignedAmbulance((selectedAmbulance || null) as Ambulance | null);
+
+      // update header notification (ETA from booking if available)
+      setAmbulanceUpdate(
+        typedBooking?.eta_minutes != null
+          ? `Ambulance assigned • ETA ${typedBooking.eta_minutes} mins`
+          : 'Ambulance assigned'
+      );
+
       setCurrentView('tracking');
     } catch (error) {
       console.error('Error creating booking:', error);
@@ -90,7 +105,7 @@ function App() {
     if (!currentBooking) return;
 
     try {
-      await supabase
+      await sb
         .from('bookings')
         .update({ status: 'completed' })
         .eq('id', currentBooking.id);
@@ -105,7 +120,7 @@ function App() {
     if (!currentBooking) return;
 
     try {
-      await supabase
+      await sb
         .from('bookings')
         .update({ status: 'cancelled' })
         .eq('id', currentBooking.id);
@@ -113,6 +128,7 @@ function App() {
       setCurrentView('home');
       setCurrentBooking(null);
       setAssignedAmbulance(null);
+      setAmbulanceUpdate('');
     } catch (error) {
       console.error('Error cancelling booking:', error);
     }
@@ -122,13 +138,14 @@ function App() {
     setCurrentView('home');
     setCurrentBooking(null);
     setAssignedAmbulance(null);
+    setAmbulanceUpdate('');
   };
 
   const handleSimulateArrival = async () => {
     if (!currentBooking) return;
 
     try {
-      const { data } = await supabase
+      const { data } = await sb
         .from('bookings')
         .update({ status: 'arrived', eta_minutes: 0 })
         .eq('id', currentBooking.id)
@@ -136,7 +153,11 @@ function App() {
         .single();
 
       if (data) {
-        setCurrentBooking(data);
+        setCurrentBooking(data as unknown as Booking);
+        // arrival notification
+        setAmbulanceUpdate('Ambulance has reached');
+        // small vibration attempt for mobile
+        if (navigator?.vibrate) navigator.vibrate?.([200, 100, 200]);
       }
     } catch (error) {
       console.error('Error simulating arrival:', error);
@@ -149,37 +170,59 @@ function App() {
 
   useEffect(() => {
     document.title = 'AmbuQuick - Emergency Response System';
+    // expose fallback for components that didn't receive onBack prop
+    // some older components may call window.appBackToHome()
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    window.appBackToHome = handleBackToHome;
   }, []);
 
   return (
     <div className={isDarkTheme ? 'dark-theme' : ''}>
-      {currentView === 'home' && <HomePage onModeSelect={handleModeSelect} />}
+      {/* Simple header showing notification + quick controls */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderBottom: '1px solid #eee', background: '#fff' }}>
+        <div style={{ fontWeight: 700 }}>AmbuQuick</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {ambulanceUpdate ? (
+            <div style={{ background: '#ffefc2', color: '#6a4b00', padding: '6px 10px', borderRadius: 20, fontSize: 13 }}>
+              🚑 {ambulanceUpdate}
+            </div>
+          ) : null}
+          {/* Back to home for convenience */}
+          <button onClick={handleBackToHome} style={{ padding: '6px 10px' }}>Back to Home</button>
+        </div>
+      </div>
 
-      {currentView === 'standard' && (
-        <StandardBooking onSubmit={handleStandardBookingSubmit} onBack={handleBackToHome} />
-      )}
+      {/* Main content */}
+      <div>
+        {currentView === 'home' && <HomePage onModeSelect={handleModeSelect} />}
 
-      {currentView === 'sos' && <SOSBooking onConfirm={handleSOSConfirm} onBack={handleBackToHome} />}
+        {currentView === 'standard' && (
+          <StandardBooking onSubmit={handleStandardBookingSubmit} onBack={handleBackToHome} />
+        )}
 
-      {currentView === 'tracking' && currentBooking && (
-        <>
-          <TrackingMap
-            booking={currentBooking}
-            ambulance={assignedAmbulance}
-            onComplete={handleCompleteTrip}
-            onCancel={handleCancelBooking}
-          />
-          <SimulationControls
-            onSimulateArrival={handleSimulateArrival}
-            onToggleTheme={handleToggleTheme}
-            isDarkTheme={isDarkTheme}
-          />
-        </>
-      )}
+        {currentView === 'sos' && <SOSBooking onConfirm={handleSOSConfirm} onBack={handleBackToHome} />}
 
-      {currentView === 'completed' && currentBooking && (
-        <CompletionScreen booking={currentBooking} onBackToHome={handleBackToHome} />
-      )}
+        {currentView === 'tracking' && currentBooking && (
+          <>
+            <TrackingMap
+              booking={currentBooking}
+              ambulance={assignedAmbulance}
+              onComplete={handleCompleteTrip}
+              onCancel={handleCancelBooking}
+            />
+            <SimulationControls
+              onSimulateArrival={handleSimulateArrival}
+              onToggleTheme={handleToggleTheme}
+              isDarkTheme={isDarkTheme}
+            />
+          </>
+        )}
+
+        {currentView === 'completed' && currentBooking && (
+          <CompletionScreen booking={currentBooking} onBackToHome={handleBackToHome} />
+        )}
+      </div>
 
       <style>{`
         .dark-theme {
