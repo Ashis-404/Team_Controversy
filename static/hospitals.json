@@ -1,0 +1,5 @@
+[
+  { "id": 1, "name": "Riverdale General Hospital", "lat": 26.9124, "lng": 75.7873, "contact": "01234-567890" },
+  { "id": 2, "name": "Green Valley Clinic", "lat": 26.9150, "lng": 75.7800, "contact": "01234-567891" },
+  { "id": 3, "name": "Sunrise Trauma Center", "lat": 26.9200, "lng": 75.7920, "contact": "01234-567892" }
+]

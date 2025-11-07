@@ -1,0 +1,26 @@
+{
+  "en": {
+    "nearby": "Nearby Hospitals Available",
+    "select": "Select Hospital",
+    "ambulanceAssigned": "Ambulance assigned!",
+    "etaUpdated": "ETA updated: {mins} mins",
+    "chatSupport": "Chat with Support",
+    "ambuAssist": "AmbuAssist"
+  },
+  "hi": {
+    "nearby": "नज़दीकी अस्पताल उपलब्ध",
+    "select": "अस्पताल चुनें",
+    "ambulanceAssigned": "एम्बुलेंस नियुक्त!",
+    "etaUpdated": "अनुमानित समय बदल गया: {mins} मिनट",
+    "chatSupport": "सहायता से चैट करें",
+    "ambuAssist": "अम्बुअसिस्ट"
+  },
+  "bn": {
+    "nearby": "নিকটস্থ হাসপাতাল উপলব্ধ",
+    "select": "হাসপাতাল নির্বাচন করুন",
+    "ambulanceAssigned": "অ্যাম্বুল্যান্স নিযুক্ত!",
+    "etaUpdated": "আনুমানিক আগমনের সময় আপডেট: {mins} মিনিট",
+    "chatSupport": "সহায়তার সাথে চ্যাট করুন",
+    "ambuAssist": "অ্যামুবেসিস্ট"
+  }
+}

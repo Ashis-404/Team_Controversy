@@ -1,0 +1,19 @@
+.sos-flash {
+  position: fixed; inset: 0; z-index: 9998; pointer-events: none;
+  animation: sosFlash 1s infinite;
+}
+@keyframes sosFlash {
+  0% { background: rgba(255,0,0,0.0); }
+  50% { background: rgba(255,0,0,0.25); }
+  100% { background: rgba(255,0,0,0.0); }
+}
+.heartbeat {
+  width: 16px; height:16px; border-radius:50%; background:#ff4b4b; display:inline-block;
+  animation: heartbeat 1s infinite;
+  margin-left:8px;
+}
+@keyframes heartbeat {
+  0% { transform: scale(1); opacity:1; }
+  40% { transform: scale(1.4); opacity:0.9; }
+  100% { transform: scale(1); opacity:1; }
+}
